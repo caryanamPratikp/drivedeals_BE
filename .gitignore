@@ -1,0 +1,28 @@
+# Compiled class files
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE and Editor files
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables & local configuration
+.env
+*.log
+
+# Modernize tool temporary outputs
+.github/modernize/
