@@ -408,4 +408,113 @@ public class AdminService {
         list.sort(Comparator.comparing(AdminAuditDto::createdAt, Comparator.nullsLast(Comparator.reverseOrder())));
         return list;
     }
+
+    public List<AdminNotificationDto> getNotifications() {
+        List<AdminNotificationDto> notifications = new ArrayList<>();
+
+        // 1. Pending dealership applications
+        List<Dealer> dealers = dealerRepository.findAll();
+        for (Dealer d : dealers) {
+            if (d.getStatus() == DealerStatus.PENDING_VERIFICATION) {
+                notifications.add(new AdminNotificationDto(
+                    "notif_dealer_" + d.getId(),
+                    "dealer",
+                    "Dealership Authorization Pending",
+                    d.getDealershipName() + " submitted authorization documents for " + (d.getBrand() != null ? d.getBrand() : "dealership franchise") + " in " + d.getCity() + ".",
+                    formatTimeAgo(d.getCreatedAt()),
+                    false,
+                    d.getCreatedAt() != null ? d.getCreatedAt() : Instant.now()
+                ));
+            }
+        }
+
+        // 2. Active groups reaching collective milestones or open for quotes
+        List<BuyerGroup> groups = buyerGroupRepository.findAll();
+        for (BuyerGroup g : groups) {
+            int membersCount = g.getCurrentMembers();
+            String carModel = g.getCar() != null ? g.getCar().getModel() : "Vehicle Demand Collective";
+            if (g.getStage() == GroupStage.OPEN_FOR_QUOTES) {
+                notifications.add(new AdminNotificationDto(
+                    "notif_grp_quotes_" + g.getId(),
+                    "group",
+                    carModel + " Ready for Quotes",
+                    "Demand group in " + g.getCity() + " reached " + membersCount + " buyers and is accepting dealer quotations.",
+                    formatTimeAgo(g.getCreatedAt()),
+                    false,
+                    g.getCreatedAt() != null ? g.getCreatedAt() : Instant.now()
+                ));
+            } else if (membersCount >= 3) {
+                notifications.add(new AdminNotificationDto(
+                    "notif_grp_milestone_" + g.getId(),
+                    "group",
+                    carModel + " Group Milestone",
+                    "Demand collective in " + g.getCity() + " reached " + membersCount + " verified buyers.",
+                    formatTimeAgo(g.getCreatedAt()),
+                    false,
+                    g.getCreatedAt() != null ? g.getCreatedAt() : Instant.now()
+                ));
+            }
+        }
+
+        // 3. Dealer quotations published
+        List<Quotation> quotations = quotationRepository.findAll();
+        for (Quotation q : quotations) {
+            String dealerName = q.getDealer() != null ? q.getDealer().getDealershipName() : "Authorized Dealership";
+            String groupName = q.getGroup() != null && q.getGroup().getCar() != null ? q.getGroup().getCar().getModel() : "Buyer Group";
+            notifications.add(new AdminNotificationDto(
+                "notif_quote_" + q.getId(),
+                "quotation",
+                "Quotation Published: " + dealerName,
+                dealerName + " submitted a collective volume price offer for " + groupName + ".",
+                formatTimeAgo(q.getCreatedAt()),
+                true,
+                q.getCreatedAt() != null ? q.getCreatedAt() : Instant.now()
+            ));
+        }
+
+        // 4. Buyer signals recorded
+        List<BuyerSignal> signals = signalRepository.findAll();
+        for (BuyerSignal s : signals) {
+            String buyerName = s.getUser() != null ? s.getUser().getName() : "Verified Buyer";
+            String mode = s.getPurchaseMode() != null ? s.getPurchaseMode().name() : "Cash";
+            String timeline = s.getTimelineMonths() != null ? s.getTimelineMonths().name() : "Immediate";
+            notifications.add(new AdminNotificationDto(
+                "notif_signal_" + s.getId(),
+                "signal",
+                "Buyer Purchase Signal Logged",
+                buyerName + " logged intent: " + mode + " mode (" + timeline + " timeframe).",
+                formatTimeAgo(s.getCreatedAt()),
+                true,
+                s.getCreatedAt() != null ? s.getCreatedAt() : Instant.now()
+            ));
+        }
+
+        // 5. Leads dispatched
+        List<Lead> leads = leadRepository.findAll();
+        for (Lead l : leads) {
+            String dealerName = l.getDealer() != null ? l.getDealer().getDealershipName() : "Dealership";
+            String buyerName = l.getBuyer() != null ? l.getBuyer().getName() : "Verified Buyer";
+            notifications.add(new AdminNotificationDto(
+                "notif_lead_" + l.getId(),
+                "lead",
+                "Buyer Lead Dispatched",
+                "Consent confirmed for " + buyerName + "; lead securely routed to " + dealerName + ".",
+                formatTimeAgo(l.getCreatedAt()),
+                true,
+                l.getCreatedAt() != null ? l.getCreatedAt() : Instant.now()
+            ));
+        }
+
+        notifications.sort(Comparator.comparing(AdminNotificationDto::timestamp, Comparator.nullsLast(Comparator.reverseOrder())));
+        return notifications.stream().limit(25).collect(Collectors.toList());
+    }
+
+    private String formatTimeAgo(Instant instant) {
+        if (instant == null) return "Recently";
+        long seconds = Instant.now().getEpochSecond() - instant.getEpochSecond();
+        if (seconds < 60) return "Just now";
+        if (seconds < 3600) return (seconds / 60) + "m ago";
+        if (seconds < 86400) return (seconds / 3600) + "h ago";
+        return (seconds / 86400) + "d ago";
+    }
 }

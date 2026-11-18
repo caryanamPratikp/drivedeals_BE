@@ -76,4 +76,10 @@ public class AdminController {
     public ResponseEntity<ApiResponse<List<AdminAuditDto>>> getAuditEvents() {
         return ResponseEntity.ok(ApiResponse.success(adminService.getAuditEvents()));
     }
+
+    @GetMapping("/notifications")
+    @Operation(summary = "Get Platform Notifications", description = "Returns dynamic platform notifications derived from live database entities")
+    public ResponseEntity<ApiResponse<List<AdminNotificationDto>>> getNotifications() {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getNotifications()));
+    }
 }
