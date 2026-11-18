@@ -43,8 +43,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        // Ensure Admin user always exists
-        if (userRepository.findByPhone("+919665879804").isEmpty()) {
+        // Ensure Admin user always exists without throwing duplicate key
+        if (userRepository.findById("admin_user_primary").isEmpty() && userRepository.findByPhone("+919665879804").isEmpty()) {
             User admin = new User(
                     "admin_user_primary",
                     "Platform Administrator",
