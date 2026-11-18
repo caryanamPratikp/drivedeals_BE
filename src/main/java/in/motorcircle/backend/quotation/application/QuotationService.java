@@ -64,6 +64,22 @@ public class QuotationService {
     }
 
     @Transactional(readOnly = true)
+    public List<QuotationDto> getQuotationsForDealer(UserPrincipal principal) {
+        String dealerId = principal.getDealerId();
+        if (dealerId == null) {
+            Dealer dealer = dealerRepository.findByUserId(principal.getId()).orElse(null);
+            if (dealer != null) {
+                dealerId = dealer.getId();
+            }
+        }
+        if (dealerId == null) {
+            return List.of();
+        }
+        List<Quotation> quotations = quotationRepository.findByDealerId(dealerId);
+        return quotations.stream().map(this::mapToQuotationDto).toList();
+    }
+
+    @Transactional(readOnly = true)
     public QuotationDto getQuotationById(String quotationId) {
         Quotation quotation = quotationRepository.findById(quotationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Quotation", "id", quotationId));

@@ -32,6 +32,15 @@ public class QuotationController {
         return ResponseEntity.ok(ApiResponse.success(quotations));
     }
 
+    @GetMapping("/dealer/quotations")
+    @PreAuthorize("hasRole('DEALER')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get Dealer Quotations", description = "Returns all quotations submitted by the authenticated dealer across all groups")
+    public ResponseEntity<ApiResponse<List<QuotationDto>>> getDealerQuotations(@AuthenticationPrincipal UserPrincipal principal) {
+        List<QuotationDto> quotations = quotationService.getQuotationsForDealer(principal);
+        return ResponseEntity.ok(ApiResponse.success(quotations));
+    }
+
     @GetMapping("/quotations/{id}")
     @Operation(summary = "Get Quotation Details", description = "Returns full quotation line-item breakdown and complete version revision trail")
     public ResponseEntity<ApiResponse<QuotationDto>> getQuotationById(@PathVariable String id) {
