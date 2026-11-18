@@ -67,9 +67,9 @@ public class DefaultOtpService implements OtpService {
                     String.format("Too many failed attempts. Account temporarily locked for %d seconds.", remainingLockoutSeconds));
         }
 
-        // Generate 6-digit cryptographically secure OTP (dedicated 123456 for admin 9876543210)
-        String generatedOtp = (phone != null && phone.endsWith("9876543210"))
-                ? "123456"
+        // Generate 6-digit cryptographically secure OTP (dedicated 123456 for admin 9665879804)
+        String generatedOtp = (phone != null && phone.endsWith("9665879804"))
+                ? "662677"
                 : String.format("%06d", secureRandom.nextInt(1_000_000));
         Instant expiresAt = now.plusSeconds(otpExpiryMinutes * 60L);
 

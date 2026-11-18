@@ -44,19 +44,19 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         // Ensure Admin user always exists
-        if (userRepository.findByPhone("+919876543210").isEmpty()) {
+        if (userRepository.findByPhone("+919665879804").isEmpty()) {
             User admin = new User(
                     "admin_user_primary",
                     "Platform Administrator",
-                    "admin.919876543210@motorcircle.in",
-                    "+919876543210",
+                    "admin.919665879804@motorcircle.in",
+                    "+919665879804",
                     UserRole.ADMIN,
                     "Pune",
                     "411001",
                     UserStatus.ACTIVE
             );
             userRepository.save(admin);
-            log.info("[DATABASE_SEEDER] Initialized Admin User with mobile number +919876543210");
+            log.info("[DATABASE_SEEDER] Initialized Admin User with mobile number +919665879804");
         }
 
         log.info("[DATABASE_SEEDER] Database ready with 0 dummy cars, 0 dummy groups, and 0 dummy users.");

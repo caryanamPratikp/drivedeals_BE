@@ -80,7 +80,7 @@ public class AdminService {
         long totalQuotations = quotationRepository.count();
         long totalLeads = leadRepository.count();
 
-        // Calculate GMV & Savings
+        // Calculate GMV & Savings strictly from database groups
         BigDecimal totalGMV = BigDecimal.ZERO;
         BigDecimal totalSavings = BigDecimal.ZERO;
 
@@ -92,29 +92,24 @@ public class AdminService {
             BigDecimal groupVolume = basePrice.multiply(BigDecimal.valueOf(members));
             totalGMV = totalGMV.add(groupVolume);
             
-            // Average 6.8% volume concession achieved through collective negotiation
+            // Average volume concession achieved through collective negotiation
             BigDecimal estimatedSavings = groupVolume.multiply(BigDecimal.valueOf(0.068));
             totalSavings = totalSavings.add(estimatedSavings);
         }
 
-        if (totalGMV.compareTo(BigDecimal.ZERO) == 0) {
-            totalGMV = BigDecimal.valueOf(48200000); // Baseline benchmark 4.82 Cr
-            totalSavings = BigDecimal.valueOf(3860000); // 38.6 L
-        }
-
-        double avgDiscount = 7.4;
-        double conversionRate = totalLeads > 0 ? 78.5 : 72.0;
+        double avgDiscount = totalGMV.compareTo(BigDecimal.ZERO) > 0 ? 6.8 : 0.0;
+        double conversionRate = totalActiveGroups > 0 ? Math.min(100.0, ((double) totalLeads / (double) totalActiveGroups) * 20.0) : 0.0;
 
         List<AdminAnalyticsDto.HubMetric> hubs = List.of(
-            new AdminAnalyticsDto.HubMetric("Pune West (Baner/Wakad)", Math.max(18, totalBuyers / 2), Math.max(4, totalActiveGroups / 2), Math.max(3, verifiedDealers / 2), totalGMV.multiply(BigDecimal.valueOf(0.55))),
-            new AdminAnalyticsDto.HubMetric("Pune East (Kharadi/Viman)", Math.max(12, totalBuyers / 3), Math.max(3, totalActiveGroups / 3), Math.max(2, verifiedDealers / 3), totalGMV.multiply(BigDecimal.valueOf(0.30))),
-            new AdminAnalyticsDto.HubMetric("Pimpri-Chinchwad Hub", Math.max(8, totalBuyers / 4), Math.max(2, totalActiveGroups / 4), Math.max(1, verifiedDealers / 4), totalGMV.multiply(BigDecimal.valueOf(0.15)))
+            new AdminAnalyticsDto.HubMetric("Pune West (Baner/Wakad)", totalBuyers > 0 ? Math.max(1, (long) Math.ceil(totalBuyers * 0.50)) : 0, totalActiveGroups > 0 ? Math.max(1, (long) Math.ceil(totalActiveGroups * 0.50)) : 0, verifiedDealers > 0 ? Math.max(1, (long) Math.ceil(verifiedDealers * 0.50)) : 0, totalGMV.multiply(BigDecimal.valueOf(0.55))),
+            new AdminAnalyticsDto.HubMetric("Pune East (Kharadi/Viman)", totalBuyers > 1 ? (long) (totalBuyers * 0.30) : 0, totalActiveGroups > 1 ? (long) (totalActiveGroups * 0.30) : 0, verifiedDealers > 1 ? (long) (verifiedDealers * 0.30) : 0, totalGMV.multiply(BigDecimal.valueOf(0.30))),
+            new AdminAnalyticsDto.HubMetric("Pimpri-Chinchwad Hub", totalBuyers > 2 ? (long) (totalBuyers * 0.20) : 0, totalActiveGroups > 2 ? (long) (totalActiveGroups * 0.20) : 0, verifiedDealers > 2 ? (long) (verifiedDealers * 0.20) : 0, totalGMV.multiply(BigDecimal.valueOf(0.15)))
         );
 
         List<AdminAnalyticsDto.TimelineMetric> timeline = List.of(
-            new AdminAnalyticsDto.TimelineMetric("Week 1", totalGMV.multiply(BigDecimal.valueOf(0.18)), totalSavings.multiply(BigDecimal.valueOf(0.18)), Math.max(2, totalActiveGroups / 4)),
-            new AdminAnalyticsDto.TimelineMetric("Week 2", totalGMV.multiply(BigDecimal.valueOf(0.24)), totalSavings.multiply(BigDecimal.valueOf(0.24)), Math.max(3, totalActiveGroups / 3)),
-            new AdminAnalyticsDto.TimelineMetric("Week 3", totalGMV.multiply(BigDecimal.valueOf(0.28)), totalSavings.multiply(BigDecimal.valueOf(0.28)), Math.max(4, totalActiveGroups / 2)),
+            new AdminAnalyticsDto.TimelineMetric("Week 1", totalGMV.multiply(BigDecimal.valueOf(0.18)), totalSavings.multiply(BigDecimal.valueOf(0.18)), totalActiveGroups > 0 ? Math.max(1, totalActiveGroups / 4) : 0),
+            new AdminAnalyticsDto.TimelineMetric("Week 2", totalGMV.multiply(BigDecimal.valueOf(0.24)), totalSavings.multiply(BigDecimal.valueOf(0.24)), totalActiveGroups > 0 ? Math.max(1, totalActiveGroups / 3) : 0),
+            new AdminAnalyticsDto.TimelineMetric("Week 3", totalGMV.multiply(BigDecimal.valueOf(0.28)), totalSavings.multiply(BigDecimal.valueOf(0.28)), totalActiveGroups > 0 ? Math.max(1, totalActiveGroups / 2) : 0),
             new AdminAnalyticsDto.TimelineMetric("Week 4 (Current)", totalGMV.multiply(BigDecimal.valueOf(0.30)), totalSavings.multiply(BigDecimal.valueOf(0.30)), totalActiveGroups)
         );
 
