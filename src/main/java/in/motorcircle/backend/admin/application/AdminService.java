@@ -91,24 +91,34 @@ public class AdminService {
         long totalQuotations = quotationRepository.count();
         long totalLeads = leadRepository.count();
 
-        // Calculate GMV & Savings strictly from database groups
+        // Calculate GMV & Savings strictly from database groups & live quotation versions
         BigDecimal totalGMV = BigDecimal.ZERO;
         BigDecimal totalSavings = BigDecimal.ZERO;
 
         for (BuyerGroup group : allGroups) {
             BigDecimal basePrice = group.getVariant() != null && group.getVariant().getExShowroomPrice() != null
                     ? group.getVariant().getExShowroomPrice()
-                    : BigDecimal.valueOf(1200000);
+                    : BigDecimal.ZERO;
             int members = Math.max(1, group.getCurrentMembers());
             BigDecimal groupVolume = basePrice.multiply(BigDecimal.valueOf(members));
             totalGMV = totalGMV.add(groupVolume);
-            
-            // Average volume concession achieved through collective negotiation
-            BigDecimal estimatedSavings = groupVolume.multiply(BigDecimal.valueOf(0.068));
-            totalSavings = totalSavings.add(estimatedSavings);
         }
 
-        double avgDiscount = totalGMV.compareTo(BigDecimal.ZERO) > 0 ? 6.8 : 0.0;
+        // Sum real discounts from active quotation versions in DB
+        List<QuotationVersion> allVersions = quotationVersionRepository.findAll();
+        for (QuotationVersion qv : allVersions) {
+            if (qv.getGroupDiscount() != null && qv.getGroupDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                int members = 1;
+                if (qv.getQuotation() != null && qv.getQuotation().getGroup() != null) {
+                    members = Math.max(1, qv.getQuotation().getGroup().getCurrentMembers());
+                }
+                totalSavings = totalSavings.add(qv.getGroupDiscount().multiply(BigDecimal.valueOf(members)));
+            }
+        }
+
+        double avgDiscount = (totalGMV.compareTo(BigDecimal.ZERO) > 0 && totalSavings.compareTo(BigDecimal.ZERO) > 0)
+                ? totalSavings.divide(totalGMV, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).doubleValue()
+                : 0.0;
         double conversionRate = totalActiveGroups > 0 ? Math.min(100.0, ((double) totalLeads / (double) totalActiveGroups) * 20.0) : 0.0;
 
         List<AdminAnalyticsDto.HubMetric> hubs = List.of(
