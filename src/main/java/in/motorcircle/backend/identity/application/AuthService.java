@@ -78,13 +78,17 @@ public class AuthService {
         }
 
         String dealerId = null;
+        String dealershipName = null;
+        String brand = null;
         if (user.getRole() == UserRole.DEALER) {
-            dealerId = dealerRepository.findByUserId(user.getId())
-                    .map(Dealer::getId)
+            Dealer dealer = dealerRepository.findByUserId(user.getId())
                     .orElseGet(() -> createDealerProfile(user, request));
+            dealerId = dealer.getId();
+            dealershipName = dealer.getDealershipName();
+            brand = dealer.getBrand();
         }
 
-        UserPrincipal principal = UserPrincipal.create(user, dealerId);
+        UserPrincipal principal = UserPrincipal.create(user, dealerId, dealershipName, brand);
         String accessToken = jwtTokenProvider.generateAccessToken(principal);
         long expiresIn = jwtTokenProvider.getExpirationMinutes() * 60L;
 
@@ -96,7 +100,9 @@ public class AuthService {
                 user.getRole().name(),
                 user.getCity(),
                 user.getPincode(),
-                dealerId
+                dealerId,
+                dealershipName,
+                brand
         );
 
         return AuthSuccessResponse.of(accessToken, expiresIn, profileDto);
@@ -107,6 +113,18 @@ public class AuthService {
         User user = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.getId()));
 
+        String dealerId = principal.getDealerId();
+        String dealershipName = principal.getDealershipName();
+        String brand = principal.getBrand();
+        if (user.getRole() == UserRole.DEALER) {
+            Dealer d = dealerRepository.findByUserId(user.getId()).orElse(null);
+            if (d != null) {
+                dealerId = d.getId();
+                dealershipName = d.getDealershipName();
+                brand = d.getBrand();
+            }
+        }
+
         return new UserProfileDto(
                 user.getId(),
                 user.getName(),
@@ -115,7 +133,9 @@ public class AuthService {
                 user.getRole().name(),
                 user.getCity(),
                 user.getPincode(),
-                principal.getDealerId()
+                dealerId,
+                dealershipName,
+                brand
         );
     }
 
@@ -148,14 +168,17 @@ public class AuthService {
         return userRepository.save(newUser);
     }
 
-    private String createDealerProfile(User user, VerifyOtpRequest request) {
+    private Dealer createDealerProfile(User user, VerifyOtpRequest request) {
         Dealer dealer = new Dealer();
         dealer.setId("dealer_" + UUID.randomUUID().toString().substring(0, 8));
         dealer.setUser(user);
         dealer.setDealershipName(request.dealershipName() != null && !request.dealershipName().trim().isEmpty()
                 ? request.dealershipName().trim()
                 : user.getName() + " Motors");
-        dealer.setBrand("ALL");
+        String assignedBrand = (request.brand() != null && !request.brand().trim().isEmpty())
+                ? request.brand().trim()
+                : "ALL";
+        dealer.setBrand(assignedBrand);
         dealer.setCity(user.getCity() != null ? user.getCity() : "Pune");
         dealer.setAddress(user.getCity() != null ? user.getCity() + ", India" : "Pune, Maharashtra, India");
         dealer.setGstin("27AAACT" + (int)(Math.random() * 9000 + 1000) + "F1Z5");
@@ -164,8 +187,7 @@ public class AuthService {
         dealer.setTotalQuotes(0);
         dealer.setTotalLeadsDelivered(0);
         dealer.setVerifiedAt(Instant.now());
-        dealerRepository.save(dealer);
-        return dealer.getId();
+        return dealerRepository.save(dealer);
     }
 
     private String maskPhone(String phone) {

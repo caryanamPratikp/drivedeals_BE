@@ -14,9 +14,10 @@ public record VerifyOtpRequest(
     String name,
     String role,
     String city,
-    String dealershipName
+    String dealershipName,
+    String brand
 ) {
     public VerifyOtpRequest(String phone, String otp) {
-        this(phone, otp, null, null, null, null);
+        this(phone, otp, null, null, null, null, null);
     }
 }

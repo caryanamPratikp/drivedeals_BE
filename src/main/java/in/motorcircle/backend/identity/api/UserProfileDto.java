@@ -8,5 +8,7 @@ public record UserProfileDto(
     String role,
     String city,
     String pincode,
-    String dealerId
+    String dealerId,
+    String dealershipName,
+    String brand
 ) {}

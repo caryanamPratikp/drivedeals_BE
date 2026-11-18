@@ -46,6 +46,8 @@ public class JwtTokenProvider {
                 .claim("name", principal.getName())
                 .claim("role", principal.getRole())
                 .claim("dealerId", principal.getDealerId())
+                .claim("dealershipName", principal.getDealershipName())
+                .claim("brand", principal.getBrand())
                 .signWith(key)
                 .compact();
     }
