@@ -191,17 +191,54 @@ public class AdminService {
     }
 
     public List<AdminUserDto> getUsers() {
-        return userRepository.findAll().stream().map(u -> new AdminUserDto(
-            u.getId(),
-            u.getName(),
-            u.getEmail(),
-            u.getPhone(),
-            u.getRole().name(),
-            u.getCity(),
-            u.getPincode(),
-            u.getStatus().name(),
-            u.getCreatedAt()
-        )).collect(Collectors.toList());
+        return userRepository.findAll().stream().map(u -> {
+            String dealerName = null;
+            String dealerBrand = null;
+            if (u.getRole() == UserRole.DEALER) {
+                Dealer d = dealerRepository.findByUserId(u.getId()).orElse(null);
+                if (d != null) {
+                    dealerName = d.getDealershipName();
+                    dealerBrand = d.getBrand();
+                }
+            }
+
+            List<UserJoinedGroupDto> joinedGroups = new ArrayList<>();
+            if (u.getRole() == UserRole.BUYER) {
+                List<GroupMembership> memberships = groupMembershipRepository.findByUserIdAndStatus(u.getId(), MembershipStatus.ACTIVE);
+                for (GroupMembership m : memberships) {
+                    BuyerGroup g = m.getGroup();
+                    if (g != null) {
+                        String carModel = g.getCar() != null ? g.getCar().getModel() : "Vehicle";
+                        String variantName = g.getVariant() != null ? g.getVariant().getName() : "Standard";
+                        joinedGroups.add(new UserJoinedGroupDto(
+                            g.getId(),
+                            carModel,
+                            variantName,
+                            g.getCity(),
+                            g.getStage() != null ? g.getStage().name() : "FORMATION",
+                            g.getCurrentMembers(),
+                            g.getTargetMembers(),
+                            m.getJoinedAt()
+                        ));
+                    }
+                }
+            }
+
+            return new AdminUserDto(
+                u.getId(),
+                u.getName(),
+                u.getEmail(),
+                u.getPhone(),
+                u.getRole().name(),
+                u.getCity(),
+                u.getPincode(),
+                u.getStatus().name(),
+                u.getCreatedAt(),
+                dealerName,
+                dealerBrand,
+                joinedGroups
+            );
+        }).collect(Collectors.toList());
     }
 
     public List<AdminGroupDto> getGroups() {

@@ -196,7 +196,7 @@ public class BuyerGroupService {
             throw new DuplicateResourceException("You are already an active member of this group.");
         }
 
-        if (group.getCurrentMembers() >= (int) (group.getTargetMembers() * 1.5)) {
+        if (group.getCurrentMembers() >= Math.max(50, (int) (group.getTargetMembers() * 2.5))) {
             throw new BusinessRuleException("GROUP_CAP_REACHED", "This group has reached its maximum member capacity.");
         }
 

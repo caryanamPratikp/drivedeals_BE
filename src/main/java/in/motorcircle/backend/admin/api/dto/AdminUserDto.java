@@ -1,6 +1,7 @@
 package in.motorcircle.backend.admin.api.dto;
 
 import java.time.Instant;
+import java.util.List;
 
 public record AdminUserDto(
     String id,
@@ -11,5 +12,8 @@ public record AdminUserDto(
     String city,
     String pincode,
     String status,
-    Instant createdAt
+    Instant createdAt,
+    String dealershipName,
+    String dealershipBrand,
+    List<UserJoinedGroupDto> joinedGroups
 ) {}

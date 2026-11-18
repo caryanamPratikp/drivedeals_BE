@@ -14,7 +14,7 @@ public record CreateGroupRequest(
     String city,
 
     @Min(value = 2, message = "Target members must be at least 2")
-    @Max(value = 50, message = "Target members cannot exceed 50")
+    @Max(value = 100, message = "Target members cannot exceed 100")
     int targetMembers,
 
     @Valid
