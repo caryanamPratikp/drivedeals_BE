@@ -19,6 +19,8 @@ public interface QuotationRepository extends JpaRepository<Quotation, String> {
            "AND q.status != 'WITHDRAWN'")
     List<Quotation> findActiveQuotesForGroup(@Param("groupId") String groupId);
 
+    List<Quotation> findByGroupId(String groupId);
+
     Optional<Quotation> findByGroupIdAndDealerId(String groupId, String dealerId);
     boolean existsByGroupIdAndDealerId(String groupId, String dealerId);
     List<Quotation> findByDealerId(String dealerId);

@@ -54,9 +54,15 @@ public class AdminController {
     }
 
     @GetMapping("/groups")
-    @Operation(summary = "List All Buyer Collectives", description = "Returns all buyer groups with current progression stages")
+    @Operation(summary = "List All Buyer Collectives", description = "Returns all buyer groups with current progression stages, buyer signals, and quotes")
     public ResponseEntity<ApiResponse<List<AdminGroupDto>>> getGroups() {
         return ResponseEntity.ok(ApiResponse.success(adminService.getGroups()));
+    }
+
+    @GetMapping("/groups/{id}")
+    @Operation(summary = "Get Group Details with Signals, Quotes & Activity", description = "Returns complete group record with buyer signals, dealer quotations, and chronological activity stream")
+    public ResponseEntity<ApiResponse<AdminGroupDto>> getGroupById(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getGroupById(id)));
     }
 
     @GetMapping("/leads")

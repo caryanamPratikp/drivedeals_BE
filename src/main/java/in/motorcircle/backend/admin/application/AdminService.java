@@ -7,8 +7,11 @@ import in.motorcircle.backend.dealer.domain.Dealer;
 import in.motorcircle.backend.dealer.domain.DealerStatus;
 import in.motorcircle.backend.dealer.infrastructure.DealerRepository;
 import in.motorcircle.backend.group.domain.BuyerGroup;
+import in.motorcircle.backend.group.domain.GroupMembership;
 import in.motorcircle.backend.group.domain.GroupStage;
+import in.motorcircle.backend.group.domain.MembershipStatus;
 import in.motorcircle.backend.group.infrastructure.BuyerGroupRepository;
+import in.motorcircle.backend.group.infrastructure.GroupMembershipRepository;
 import in.motorcircle.backend.identity.domain.User;
 import in.motorcircle.backend.identity.domain.UserRole;
 import in.motorcircle.backend.identity.infrastructure.UserRepository;
@@ -20,6 +23,8 @@ import in.motorcircle.backend.quotation.domain.Quotation;
 import in.motorcircle.backend.quotation.domain.QuotationVersion;
 import in.motorcircle.backend.quotation.infrastructure.QuotationRepository;
 import in.motorcircle.backend.quotation.infrastructure.QuotationVersionRepository;
+import in.motorcircle.backend.signal.domain.BuyerSignal;
+import in.motorcircle.backend.signal.infrastructure.BuyerSignalRepository;
 import in.motorcircle.backend.shared.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +45,8 @@ public class AdminService {
     private final DealerRepository dealerRepository;
     private final CarRepository carRepository;
     private final BuyerGroupRepository buyerGroupRepository;
+    private final GroupMembershipRepository groupMembershipRepository;
+    private final BuyerSignalRepository signalRepository;
     private final QuotationRepository quotationRepository;
     private final QuotationVersionRepository quotationVersionRepository;
     private final LeadRepository leadRepository;
@@ -50,6 +57,8 @@ public class AdminService {
             DealerRepository dealerRepository,
             CarRepository carRepository,
             BuyerGroupRepository buyerGroupRepository,
+            GroupMembershipRepository groupMembershipRepository,
+            BuyerSignalRepository signalRepository,
             QuotationRepository quotationRepository,
             QuotationVersionRepository quotationVersionRepository,
             LeadRepository leadRepository,
@@ -59,6 +68,8 @@ public class AdminService {
         this.dealerRepository = dealerRepository;
         this.carRepository = carRepository;
         this.buyerGroupRepository = buyerGroupRepository;
+        this.groupMembershipRepository = groupMembershipRepository;
+        this.signalRepository = signalRepository;
         this.quotationRepository = quotationRepository;
         this.quotationVersionRepository = quotationVersionRepository;
         this.leadRepository = leadRepository;
@@ -194,7 +205,132 @@ public class AdminService {
     }
 
     public List<AdminGroupDto> getGroups() {
-        return buyerGroupRepository.findAll().stream().map(g -> new AdminGroupDto(
+        return buyerGroupRepository.findAll().stream()
+            .map(this::mapToGroupDto)
+            .collect(Collectors.toList());
+    }
+
+    public AdminGroupDto getGroupById(String id) {
+        BuyerGroup group = buyerGroupRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Buyer group not found with id: " + id));
+        return mapToGroupDto(group);
+    }
+
+    private AdminGroupDto mapToGroupDto(BuyerGroup g) {
+        // 1. Buyer signals for this group
+        List<BuyerSignal> signals = signalRepository.findByGroupId(g.getId());
+        List<AdminGroupDto.GroupBuyerSignalDto> signalDtos = signals.stream().map(s -> new AdminGroupDto.GroupBuyerSignalDto(
+            s.getId(),
+            s.getUser() != null ? s.getUser().getId() : null,
+            s.getUser() != null ? s.getUser().getName() : "Verified Buyer",
+            s.getUser() != null ? s.getUser().getPhone() : "+919800000000",
+            s.getTimelineMonths() != null ? s.getTimelineMonths().name() : "IMMEDIATE",
+            s.getPurchaseMode() != null ? s.getPurchaseMode().name() : "CASH",
+            s.isExchangeCar(),
+            s.getExchangeCarDetails(),
+            s.getNotes(),
+            s.getCreatedAt()
+        )).collect(Collectors.toList());
+
+        // 2. Dealer quotations & latest versions for this group
+        List<Quotation> quotations = quotationRepository.findByGroupId(g.getId());
+        List<AdminGroupDto.GroupDealerQuoteDto> quoteDtos = new ArrayList<>();
+        for (Quotation q : quotations) {
+            List<QuotationVersion> versions = quotationVersionRepository.findByQuotationIdOrderByVersionNumberDesc(q.getId());
+            QuotationVersion latest = !versions.isEmpty() ? versions.get(0) : null;
+            if (latest != null) {
+                quoteDtos.add(new AdminGroupDto.GroupDealerQuoteDto(
+                    q.getId(),
+                    q.getDealer() != null ? q.getDealer().getId() : null,
+                    q.getDealer() != null ? q.getDealer().getDealershipName() : "Authorized Dealership",
+                    q.getDealer() != null ? q.getDealer().getBrand() : "OEM",
+                    q.getDealer() != null ? q.getDealer().getCity() : g.getCity(),
+                    q.getDealer() != null && q.getDealer().getUser() != null ? q.getDealer().getUser().getPhone() : "",
+                    latest.getVersionNumber(),
+                    latest.getExShowroomPrice(),
+                    latest.getGroupDiscount(),
+                    latest.getCorporateDiscount(),
+                    latest.getExchangeBonus(),
+                    latest.getTotalOnRoadPrice(),
+                    latest.getAccessoryPackage(),
+                    latest.getWarrantyYears(),
+                    latest.getValidUntil(),
+                    latest.getDeliveryTimelineWeeks(),
+                    q.getStatus().name(),
+                    latest.getCreatedAt()
+                ));
+            }
+        }
+
+        // 3. Group members
+        List<GroupMembership> memberships = groupMembershipRepository.findByGroupIdAndStatus(g.getId(), MembershipStatus.ACTIVE);
+        List<AdminGroupDto.GroupMemberDto> memberDtos = memberships.stream().map(m -> new AdminGroupDto.GroupMemberDto(
+            m.getId(),
+            m.getUser() != null ? m.getUser().getId() : null,
+            m.getUser() != null ? m.getUser().getName() : "Buyer Member",
+            m.getUser() != null ? m.getUser().getPhone() : "",
+            m.getUser() != null ? m.getUser().getCity() : g.getCity(),
+            m.getJoinedAt(),
+            m.getStatus().name()
+        )).collect(Collectors.toList());
+
+        // 4. Chronological activity stream
+        List<AdminGroupDto.GroupActivityDto> activities = new ArrayList<>();
+
+        // Group created event
+        activities.add(new AdminGroupDto.GroupActivityDto(
+            "act-created-" + g.getId(),
+            "GROUP_CREATED",
+            g.getCreatedBy() != null ? g.getCreatedBy().getName() : "Initiator",
+            "BUYER",
+            "Demand Group Formed",
+            "Cohort initiated for " + (g.getCar() != null ? g.getCar().getModel() : "Vehicle") + " in " + g.getCity() + " targeting " + g.getTargetMembers() + " buyers.",
+            g.getCreatedAt() != null ? g.getCreatedAt() : Instant.now()
+        ));
+
+        // Member join events
+        for (GroupMembership m : memberships) {
+            activities.add(new AdminGroupDto.GroupActivityDto(
+                "act-join-" + m.getId(),
+                "BUYER_JOINED",
+                m.getUser() != null ? m.getUser().getName() : "Buyer",
+                "BUYER",
+                "Buyer Joined Collective",
+                (m.getUser() != null ? m.getUser().getName() : "Buyer") + " joined the collective demand cohort.",
+                m.getJoinedAt() != null ? m.getJoinedAt() : Instant.now()
+            ));
+        }
+
+        // Buyer signals
+        for (BuyerSignal s : signals) {
+            activities.add(new AdminGroupDto.GroupActivityDto(
+                "act-signal-" + s.getId(),
+                "BUYER_SIGNAL",
+                s.getUser() != null ? s.getUser().getName() : "Buyer",
+                "BUYER",
+                "Buyer Purchase Signal Logged",
+                "Timeline: " + (s.getTimelineMonths() != null ? s.getTimelineMonths().name() : "N/A") + " | Mode: " + (s.getPurchaseMode() != null ? s.getPurchaseMode().name() : "CASH") + (s.isExchangeCar() ? " | Has Old Car Exchange" : "") + (s.getNotes() != null && !s.getNotes().isEmpty() ? " | Notes: " + s.getNotes() : ""),
+                s.getCreatedAt() != null ? s.getCreatedAt() : Instant.now()
+            ));
+        }
+
+        // Dealer quotes
+        for (AdminGroupDto.GroupDealerQuoteDto q : quoteDtos) {
+            activities.add(new AdminGroupDto.GroupActivityDto(
+                "act-quote-" + q.quotationId() + "-" + q.versionNumber(),
+                "DEALER_QUOTE",
+                q.dealershipName(),
+                "DEALER",
+                "Dealership Quotation v" + q.versionNumber() + " Published",
+                "Offered On-Road Price: ₹" + q.totalOnRoadPrice().toPlainString() + " (Includes ₹" + q.groupDiscount().toPlainString() + " collective group discount). Delivery in " + q.deliveryTimelineWeeks() + " weeks.",
+                q.createdAt() != null ? q.createdAt() : Instant.now()
+            ));
+        }
+
+        // Sort activities newest first
+        activities.sort(Comparator.comparing(AdminGroupDto.GroupActivityDto::timestamp).reversed());
+
+        return new AdminGroupDto(
             g.getId(),
             g.getCar() != null ? g.getCar().getId() : null,
             g.getCar() != null ? g.getCar().getBrand() : "OEM",
@@ -206,8 +342,13 @@ public class AdminService {
             g.getCurrentMembers(),
             g.getStage().name(),
             g.getExpiresAt(),
-            g.getCreatedBy() != null ? g.getCreatedBy().getName() : "Buyer Collective"
-        )).collect(Collectors.toList());
+            g.getCreatedBy() != null ? g.getCreatedBy().getName() : "Buyer Collective",
+            g.getCreatedAt() != null ? g.getCreatedAt() : Instant.now(),
+            signalDtos,
+            quoteDtos,
+            memberDtos,
+            activities
+        );
     }
 
     public List<AdminLeadDto> getLeads() {
