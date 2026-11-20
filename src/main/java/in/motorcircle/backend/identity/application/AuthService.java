@@ -80,12 +80,16 @@ public class AuthService {
         String dealerId = null;
         String dealershipName = null;
         String brand = null;
+        String dealerStatus = null;
+        String onboardingStatus = null;
         if (user.getRole() == UserRole.DEALER) {
             Dealer dealer = dealerRepository.findByUserId(user.getId())
                     .orElseGet(() -> createDealerProfile(user, request));
             dealerId = dealer.getId();
             dealershipName = dealer.getDealershipName();
             brand = dealer.getBrand();
+            dealerStatus = dealer.getStatus() != null ? dealer.getStatus().name() : DealerStatus.PENDING_VERIFICATION.name();
+            onboardingStatus = dealer.getOnboardingStatus() != null ? dealer.getOnboardingStatus() : "NOT_STARTED";
         }
 
         UserPrincipal principal = UserPrincipal.create(user, dealerId, dealershipName, brand);
@@ -102,7 +106,9 @@ public class AuthService {
                 user.getPincode(),
                 dealerId,
                 dealershipName,
-                brand
+                brand,
+                dealerStatus,
+                onboardingStatus
         );
 
         return AuthSuccessResponse.of(accessToken, expiresIn, profileDto);
@@ -116,12 +122,16 @@ public class AuthService {
         String dealerId = principal.getDealerId();
         String dealershipName = principal.getDealershipName();
         String brand = principal.getBrand();
+        String dealerStatus = null;
+        String onboardingStatus = null;
         if (user.getRole() == UserRole.DEALER) {
             Dealer d = dealerRepository.findByUserId(user.getId()).orElse(null);
             if (d != null) {
                 dealerId = d.getId();
                 dealershipName = d.getDealershipName();
                 brand = d.getBrand();
+                dealerStatus = d.getStatus() != null ? d.getStatus().name() : DealerStatus.PENDING_VERIFICATION.name();
+                onboardingStatus = d.getOnboardingStatus() != null ? d.getOnboardingStatus() : "NOT_STARTED";
             }
         }
 
@@ -135,7 +145,9 @@ public class AuthService {
                 user.getPincode(),
                 dealerId,
                 dealershipName,
-                brand
+                brand,
+                dealerStatus,
+                onboardingStatus
         );
     }
 
@@ -181,12 +193,13 @@ public class AuthService {
         dealer.setBrand(assignedBrand);
         dealer.setCity(user.getCity() != null ? user.getCity() : "Pune");
         dealer.setAddress(user.getCity() != null ? user.getCity() + ", India" : "Pune, Maharashtra, India");
-        dealer.setGstin("27AAACT" + (int)(Math.random() * 9000 + 1000) + "F1Z5");
-        dealer.setStatus(DealerStatus.VERIFIED);
-        dealer.setRating(new BigDecimal("4.90"));
+        dealer.setGstin(null);
+        dealer.setStatus(DealerStatus.PENDING_VERIFICATION);
+        dealer.setOnboardingStatus("NOT_STARTED");
+        dealer.setRating(new BigDecimal("5.00"));
         dealer.setTotalQuotes(0);
         dealer.setTotalLeadsDelivered(0);
-        dealer.setVerifiedAt(Instant.now());
+        dealer.setVerifiedAt(null);
         return dealerRepository.save(dealer);
     }
 

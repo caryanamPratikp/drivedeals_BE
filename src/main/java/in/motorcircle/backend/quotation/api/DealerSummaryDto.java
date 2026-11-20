@@ -7,5 +7,7 @@ public record DealerSummaryDto(
     String dealershipName,
     String brand,
     String city,
-    BigDecimal rating
+    BigDecimal rating,
+    boolean isVerified,
+    String status
 ) {}

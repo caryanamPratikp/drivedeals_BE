@@ -60,7 +60,10 @@ public class QuotationService {
     @Transactional(readOnly = true)
     public List<QuotationDto> getQuotationsForGroup(String groupId) {
         List<Quotation> quotations = quotationRepository.findActiveQuotesForGroup(groupId);
-        return quotations.stream().map(this::mapToQuotationDto).toList();
+        return quotations.stream()
+                .filter(q -> q.getDealer() != null && q.getDealer().getStatus() == DealerStatus.VERIFIED)
+                .map(this::mapToQuotationDto)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -256,8 +259,10 @@ public class QuotationService {
 
     private QuotationDto mapToQuotationDto(Quotation q) {
         Dealer d = q.getDealer();
+        boolean isVerified = d != null && d.getStatus() == DealerStatus.VERIFIED;
+        String dealerStatus = d != null && d.getStatus() != null ? d.getStatus().name() : "PENDING_VERIFICATION";
         DealerSummaryDto dealerSummary = new DealerSummaryDto(
-                d.getId(), d.getDealershipName(), d.getBrand(), d.getCity(), d.getRating()
+                d.getId(), d.getDealershipName(), d.getBrand(), d.getCity(), d.getRating(), isVerified, dealerStatus
         );
 
         List<QuotationVersion> versions = versionRepository.findByQuotationIdOrderByVersionNumberDesc(q.getId());

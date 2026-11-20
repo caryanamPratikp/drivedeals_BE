@@ -22,21 +22,51 @@ public class Dealer {
     @Column(name = "dealership_name", length = 191, nullable = false)
     private String dealershipName;
 
+    @Column(name = "legal_entity_name", length = 191)
+    private String legalEntityName;
+
     @Column(name = "brand", length = 100, nullable = false)
     private String brand;
 
     @Column(name = "city", length = 100, nullable = false)
     private String city;
 
+    @Column(name = "state", length = 50)
+    private String state;
+
+    @Column(name = "pincode", length = 10)
+    private String pincode;
+
     @Column(name = "address", columnDefinition = "TEXT", nullable = false)
     private String address;
 
-    @Column(name = "gstin", length = 15, nullable = false, unique = true)
+    @Column(name = "gstin", length = 15, unique = true)
     private String gstin;
+
+    @Column(name = "pan_number", length = 10)
+    private String panNumber;
+
+    @Column(name = "dealer_code", length = 50)
+    private String dealerCode;
+
+    @Column(name = "dealership_type", length = 50)
+    private String dealershipType;
+
+    @Column(name = "contact_person", length = 100)
+    private String contactPerson;
+
+    @Column(name = "contact_email", length = 191)
+    private String contactEmail;
+
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 30, nullable = false)
     private DealerStatus status;
+
+    @Column(name = "onboarding_status", length = 30, nullable = false)
+    private String onboardingStatus = "NOT_STARTED";
 
     @Column(name = "rating", precision = 3, scale = 2, nullable = false)
     private BigDecimal rating;
@@ -197,6 +227,86 @@ public class Dealer {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getLegalEntityName() {
+        return legalEntityName;
+    }
+
+    public void setLegalEntityName(String legalEntityName) {
+        this.legalEntityName = legalEntityName;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getPincode() {
+        return pincode;
+    }
+
+    public void setPincode(String pincode) {
+        this.pincode = pincode;
+    }
+
+    public String getPanNumber() {
+        return panNumber;
+    }
+
+    public void setPanNumber(String panNumber) {
+        this.panNumber = panNumber;
+    }
+
+    public String getDealerCode() {
+        return dealerCode;
+    }
+
+    public void setDealerCode(String dealerCode) {
+        this.dealerCode = dealerCode;
+    }
+
+    public String getDealershipType() {
+        return dealershipType;
+    }
+
+    public void setDealershipType(String dealershipType) {
+        this.dealershipType = dealershipType;
+    }
+
+    public String getContactPerson() {
+        return contactPerson;
+    }
+
+    public void setContactPerson(String contactPerson) {
+        this.contactPerson = contactPerson;
+    }
+
+    public String getContactEmail() {
+        return contactEmail;
+    }
+
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
+    }
+
+    public String getOnboardingStatus() {
+        return onboardingStatus;
+    }
+
+    public void setOnboardingStatus(String onboardingStatus) {
+        this.onboardingStatus = onboardingStatus;
     }
 
     @Override

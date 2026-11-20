@@ -10,5 +10,7 @@ public record UserProfileDto(
     String pincode,
     String dealerId,
     String dealershipName,
-    String brand
+    String brand,
+    String dealerStatus,
+    String onboardingStatus
 ) {}

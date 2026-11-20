@@ -19,6 +19,7 @@ import in.motorcircle.backend.lead.domain.Lead;
 import in.motorcircle.backend.lead.domain.LeadEvent;
 import in.motorcircle.backend.lead.infrastructure.LeadEventRepository;
 import in.motorcircle.backend.lead.infrastructure.LeadRepository;
+import in.motorcircle.backend.notification.application.NotificationService;
 import in.motorcircle.backend.quotation.domain.Quotation;
 import in.motorcircle.backend.quotation.domain.QuotationVersion;
 import in.motorcircle.backend.quotation.infrastructure.QuotationRepository;
@@ -51,6 +52,7 @@ public class AdminService {
     private final QuotationVersionRepository quotationVersionRepository;
     private final LeadRepository leadRepository;
     private final LeadEventRepository leadEventRepository;
+    private final NotificationService notificationService;
 
     public AdminService(
             UserRepository userRepository,
@@ -62,7 +64,8 @@ public class AdminService {
             QuotationRepository quotationRepository,
             QuotationVersionRepository quotationVersionRepository,
             LeadRepository leadRepository,
-            LeadEventRepository leadEventRepository
+            LeadEventRepository leadEventRepository,
+            NotificationService notificationService
     ) {
         this.userRepository = userRepository;
         this.dealerRepository = dealerRepository;
@@ -74,6 +77,7 @@ public class AdminService {
         this.quotationVersionRepository = quotationVersionRepository;
         this.leadRepository = leadRepository;
         this.leadEventRepository = leadEventRepository;
+        this.notificationService = notificationService;
     }
 
     public AdminAnalyticsDto getAnalytics() {
@@ -153,22 +157,7 @@ public class AdminService {
     }
 
     public List<AdminDealerDto> getDealers() {
-        return dealerRepository.findAll().stream().map(d -> new AdminDealerDto(
-            d.getId(),
-            d.getDealershipName(),
-            d.getBrand(),
-            d.getCity(),
-            d.getAddress(),
-            d.getGstin(),
-            d.getStatus().name(),
-            d.getRating(),
-            d.getTotalQuotes(),
-            d.getTotalLeadsDelivered(),
-            d.getVerifiedAt(),
-            d.getUser() != null ? d.getUser().getName() : "Dealer Principal",
-            d.getUser() != null ? d.getUser().getPhone() : "+919800000000",
-            d.getUser() != null ? d.getUser().getEmail() : "dealer@drivedeals.in"
-        )).collect(Collectors.toList());
+        return dealerRepository.findAll().stream().map(this::mapToAdminDealerDto).collect(Collectors.toList());
     }
 
     @Transactional
@@ -179,24 +168,60 @@ public class AdminService {
         dealer.setStatus(request.status());
         if (request.status() == DealerStatus.VERIFIED) {
             dealer.setVerifiedAt(Instant.now());
+            dealer.setOnboardingStatus("VERIFIED");
+            if (dealer.getUser() != null) {
+                notificationService.createNotification(
+                    dealer.getUser(),
+                    "Dealership Verified",
+                    "Your dealership " + dealer.getDealershipName() + " has been verified by platform administrator. You can now review buyer groups and submit quotes!",
+                    "STATUS_UPDATE",
+                    "/dealer/dashboard"
+                );
+            }
+        } else if (request.status() == DealerStatus.REJECTED) {
+            dealer.setOnboardingStatus("REJECTED");
+            if (dealer.getUser() != null) {
+                notificationService.createNotification(
+                    dealer.getUser(),
+                    "Dealership Verification Rejected",
+                    "Your dealership verification request was not approved. Please review your details and re-submit.",
+                    "STATUS_UPDATE",
+                    "/dealer/onboarding"
+                );
+            }
         }
         Dealer updated = dealerRepository.save(dealer);
 
+        return mapToAdminDealerDto(updated);
+    }
+
+    private AdminDealerDto mapToAdminDealerDto(Dealer d) {
         return new AdminDealerDto(
-            updated.getId(),
-            updated.getDealershipName(),
-            updated.getBrand(),
-            updated.getCity(),
-            updated.getAddress(),
-            updated.getGstin(),
-            updated.getStatus().name(),
-            updated.getRating(),
-            updated.getTotalQuotes(),
-            updated.getTotalLeadsDelivered(),
-            updated.getVerifiedAt(),
-            updated.getUser() != null ? updated.getUser().getName() : "Dealer Principal",
-            updated.getUser() != null ? updated.getUser().getPhone() : "+919800000000",
-            updated.getUser() != null ? updated.getUser().getEmail() : "dealer@drivedeals.in"
+            d.getId(),
+            d.getDealershipName(),
+            d.getLegalEntityName(),
+            d.getBrand(),
+            d.getCity(),
+            d.getState(),
+            d.getPincode(),
+            d.getAddress(),
+            d.getGstin(),
+            d.getPanNumber(),
+            d.getDealerCode(),
+            d.getDealershipType(),
+            d.getStatus() != null ? d.getStatus().name() : "PENDING_VERIFICATION",
+            d.getOnboardingStatus(),
+            d.getRating(),
+            d.getTotalQuotes(),
+            d.getTotalLeadsDelivered(),
+            d.getVerifiedAt(),
+            d.getUser() != null ? d.getUser().getName() : "Dealer Principal",
+            d.getUser() != null ? d.getUser().getPhone() : "+919800000000",
+            d.getUser() != null ? d.getUser().getEmail() : "dealer@drivedeals.in",
+            d.getContactPerson(),
+            d.getContactPhone(),
+            d.getContactEmail(),
+            d.getCreatedAt()
         );
     }
 
